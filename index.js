@@ -15,7 +15,18 @@ async function getAttributes() {
 
   // Apply regex and search for date and time instances.
   // Grab the text from the title attribute that holds the values.
-  return await page.getByTitle(title_date_time_regex).all();
+  let results = [];
+
+  while (results.length <= 100) {
+    results = results.concat(await page.getByTitle(title_date_time_regex).all());
+    await clickMore(page);
+  }
+
+  return results;
+}
+
+async function clickMore(page) {
+  page.getByRole('more').click();
 }
 
 async function extractTitles(results) {
@@ -51,14 +62,20 @@ function parseDateAndTime(results_titles) {
     }
   }
 
-  testPrintArray(date_and_time_parsed);
-  console.log(read_errors, "errors detected");
+  testPrintArray(date_and_time_parsed, 100);
+  console.log(read_errors, "read errors detected");
 
   return date_and_time_parsed;
 }
 
 function testPrintArray(array) {
   for (let i = 0;  i < array.length; i++) {
+    console.log(array[i]);
+  }
+}
+
+function testPrintArray(array, count) {
+  for (let i = 0;  i < count; i++) {
     console.log(array[i]);
   }
 }
@@ -70,24 +87,32 @@ function testPrint2dArray(array) {
 }
 
 async function sortHackerNewsArticles() {
+  // Grab at least 100 articles.
   const results = await getAttributes();
   const results_titles = await extractTitles(results);
   const date_and_time_parsed = parseDateAndTime(results_titles);
 
   // check for all records for an out of order date/time.
   let errors = 0;
+  let checks = 0;
 
-  for (let i = 1; i < date_and_time_parsed.length; i++) {
+  for (let i = 1; i <= 100; i++) {
     if (!date_and_time_parsed[i - 1] > date_and_time_parsed[i]) {
       errors++;
     }
+
+    checks++;
   }
 
+  console.log(errors, "check errors detected.");
+  console.log(checks, "checks ran.");
+
+
   if (errors > 0) {
-    console.log("Error. The listings are not in chronological order.")
+    console.log("Error. The listings are not in chronological order.");
   }
   else {
-    console.log("Success. The listings are in chronological order.")
+    console.log("Success. The listings are in chronological order.");
   }
 }
 
