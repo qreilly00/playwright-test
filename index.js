@@ -1,7 +1,34 @@
 // EDIT THIS FILE TO COMPLETE ASSIGNMENT QUESTION 1
 const { chromium } = require("playwright");
 
-function splitAndParse(results_titles) {
+async function getAttributes() {
+  // Launch browser
+  const browser = await chromium.launch({ headless: false });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  // Generated on https://regex-generator.olafneumann.org/
+  const title_date_time_regex = /[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,3})?000Z/i;
+
+  // Go to Hacker News
+  await page.goto("https://news.ycombinator.com/newest");
+
+  // Apply regex and search for date and time instances.
+  // Grab the text from the title attribute that holds the values.
+  return await page.getByTitle(title_date_time_regex).all();
+}
+
+async function extractTitles(results) {
+  const results_titles = [];
+
+  for (let i = 0; i < results.length; i++) {
+    results_titles.push(await results[i].getAttribute('title'));
+  }
+
+  return results_titles;
+}
+
+function parseDateAndTime(results_titles) {
   // Generated on https://regex-generator.olafneumann.org/
   const date_only_regex = /[0-9]{4}-[0-9]{2}-[0-9]{2}/i;
   const time_only_regex = /[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,3})/i;
@@ -16,49 +43,63 @@ function splitAndParse(results_titles) {
     const time = time_only_regex.exec(results_titles[i]);
 
     if (date != null && time != null) {
-      date_and_time_parsed.push([date[0], time[0]]);
+      date_and_time = date[0] + " " + time[0];
+      date_and_time_parsed.push(date_and_time);
+    }
+    else {
       read_errors++;
     }
   }
 
-  /*for (let i = 0;  i < date_and_time_parsed.length; i++) {
-    console.log(date_and_time_parsed[i][0], date_and_time_parsed[i][1]);
-  }*/
+  testPrintArray(date_and_time_parsed);
+  console.log(read_errors, "errors detected");
+
+  return date_and_time_parsed;
+}
+
+function testPrintArray(array) {
+  for (let i = 0;  i < array.length; i++) {
+    console.log(array[i]);
+  }
+}
+
+function testPrint2dArray(array) {
+  for (let i = 0;  i < array.length; i++) {
+    console.log(array[i][0], array[i][1]);
+  }
 }
 
 async function sortHackerNewsArticles() {
-  // Launch browser
-  const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext();
-  const page = await context.newPage();
+  const results = await getAttributes();
+  const results_titles = await extractTitles(results);
+  const date_and_time_parsed = parseDateAndTime(results_titles);
 
-  // Generated on https://regex-generator.olafneumann.org/
-  const title_date_time_regex = /[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,3})?000Z/i;
+  // check for all records for an out of order date/time.
+  let errors = 0;
 
-  // Go to Hacker News
-  await page.goto("https://news.ycombinator.com/newest");
-
-  // Apply regex and search for date and time instances.
-  // Grab the text from the title attribute that holds the values.
-  const results = await page.getByTitle(title_date_time_regex).all();
-  const results_titles = [];
-
-
-
-  if (results != null) {
-    for (let i = 0; i < results.length; i++) {
-      results_titles.push(await results[i].getAttribute('title'));
+  for (let i = 1; i < date_and_time_parsed.length; i++) {
+    if (!date_and_time_parsed[i - 1] > date_and_time_parsed[i]) {
+      errors++;
     }
+  }
 
-    splitAndParse(results_titles);
-
-    // Parse date and time into usable data. Store in a 2d array.
+  if (errors > 0) {
+    console.log("Error. The listings are not in chronological order.")
   }
   else {
-    console.log("There were no matches"); // Never Reached. Revisit.
+    console.log("Success. The listings are in chronological order.")
   }
 }
 
 (async () => {
-  await sortHackerNewsArticles();
+  try {
+    await sortHackerNewsArticles();
+  }
+  catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
+  finally {
+    process.exit(0);
+  }
 })();
