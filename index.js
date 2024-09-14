@@ -101,7 +101,7 @@ async function sortHackerNewsArticles() {
   let errors = 0;
   let checks = 0;
 
-  for (let i = 1; i < date_and_time_parsed.length; i++) {
+  for (let i = 1; i <= 100; i++) {
     if (!(date_and_time_parsed[i - 1] >= date_and_time_parsed[i])) {
       errors++;
     }
